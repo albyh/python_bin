@@ -27,7 +27,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="item36.py" />
-    <Compile Include="sketch_v1.py" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
