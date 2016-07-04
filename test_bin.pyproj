@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9a73ef44-fba9-475f-b0d1-0af8b9ff831b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>item36.py</StartupFile>
+    <StartupFile>sqlite\item38.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -27,6 +27,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="item36.py" />
+    <Compile Include="sqlite\item38.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="sqlite\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
