@@ -21,6 +21,8 @@ roster = (
 
 #setup database and create cursor object
 with sqlite3.connect(':memory:') as connection:
+    #suppress 'u'on string output
+    #connection.text_factory = str
     c=connection.cursor()
     c.execute("DROP TABLE IF EXISTS People")
     c.execute("CREATE TABLE Roster(Name TEXT, Species TEXT, IQ INT)")

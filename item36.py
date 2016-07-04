@@ -19,7 +19,7 @@ def make_groups(s, defaults):
         #7. Use of conditional statements: if, elif, else
         if x % 2 == 0 and s[x][5] > (defaults[2]*.95):
             even_group.append(s[x])
-        elif s[x][5] > defaults[2]:
+        elif s[x][5] > defaults[2]*.95:
             odd_group.append(s[x])
         else:
             nopass_group.append(s[x])
