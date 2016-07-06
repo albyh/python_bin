@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9a73ef44-fba9-475f-b0d1-0af8b9ff831b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>my_sort.py</StartupFile>
+    <StartupFile>item50.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -30,10 +30,16 @@
     <Compile Include="item40.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="my_sort.py">
+    <Compile Include="item45.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="item50.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="sqlite\item38.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="tkphone.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
