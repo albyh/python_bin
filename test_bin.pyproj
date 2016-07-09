@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9a73ef44-fba9-475f-b0d1-0af8b9ff831b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>item56.py</StartupFile>
+    <StartupFile>item58.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -21,6 +21,17 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="item58.py" />
+    <Content Include="source\AppLog_2016-07-07.txt" />
+    <Content Include="source\AppLog_2016-07-08.txt" />
+    <Content Include="source\AppLog_2016-07-09.txt" />
+    <Content Include="source\enclipper_2016-06-17.txt" />
+    <Content Include="source\enclipper_2016-06-27.txt" />
+    <Content Include="source\enclipper_2016-06-28.txt" />
+    <Content Include="source\TextFile1.txt" />
+    <Content Include="source\TextFile2.txt" />
+    <Content Include="source\TextFile3.txt" />
+    <Content Include="source\TextFile4.txt" />
     <Content Include="man1.txt" />
     <Content Include="man2.txt" />
     <Content Include="sketch.txt" />
@@ -48,6 +59,9 @@
     <Compile Include="item56.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="item57.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="tkphone.py">
       <SubType>Code</SubType>
     </Compile>
@@ -56,6 +70,8 @@
     <Folder Include="item38\" />
     <Folder Include="item52\" />
     <Folder Include="Item 53\" />
+    <Folder Include="source\" />
+    <Folder Include="dest\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
