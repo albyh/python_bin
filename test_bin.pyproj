@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9a73ef44-fba9-475f-b0d1-0af8b9ff831b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>item50.py</StartupFile>
+    <StartupFile>item56.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -26,6 +26,9 @@
     <Content Include="sketch.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Item 53\Item53.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="item36.py" />
     <Compile Include="item40.py">
       <SubType>Code</SubType>
@@ -36,7 +39,13 @@
     <Compile Include="item50.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="sqlite\item38.py">
+    <Compile Include="item38\item38.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="item52\item52.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="item56.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="tkphone.py">
@@ -44,7 +53,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="sqlite\" />
+    <Folder Include="item38\" />
+    <Folder Include="item52\" />
+    <Folder Include="Item 53\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

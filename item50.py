@@ -18,7 +18,7 @@ b2_2.grid(row=1,column=1)
 
 l2 = Label(win_2, text="This is a label")l2.grid(row=1,column=0)
 #====WINDOW 3
-win_3 = Tk()
+win_3 = T
 f = Frame(win_3)
 b3_1 = Button(f,text ="One")
 b3_2 = Button(f,text ="One")
