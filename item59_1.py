@@ -8,7 +8,7 @@ import time
 def setup():
 
     win = tk.Tk()        
-
+    win.title("Send Files to HQ")
     srcPath  = ""
     destPath = ""
     paths    = {"src"   : "",
@@ -27,13 +27,16 @@ def setup():
     options['parent'] = win
     options['title'] = ''
 
-    tk.Label(win, text = text[0], font = ('Arial', 18, 'bold')).pack()
+    tk.Label(win, text = text[0], font = ('Arial', 18, 'bold'), pady=20).pack()
+    tk.Frame(win, height = 10).pack()
     tk.Label(win, text = text[1]).pack()
-    tk.Label(win, text = text[2]).pack()
+    tk.Label(win, text = text[2], padx = 20).pack()
     tk.Label(win, text = text[3]).pack()
 
+    tk.Frame(win, height = 30).pack()
+
     # options for buttons
-    button_opt = {'fill': Tkconstants.BOTH, 'padx': 5, 'pady': 10}
+    button_opt = {'fill': Tkconstants.BOTH, 'padx': 80, 'pady': 10}
 
     # define buttons
     #tk.Button(win, text='Source Folder', command= lambda: getSource(dir_opt,srcPath)).pack(**button_opt)
@@ -46,9 +49,13 @@ def setup():
     labelDest   = tk.Label(win, text = options['initialdir']) 
     labelDest.pack()
 
-    bCopy   = tk.Button(win, text='Move Staged Files', command= lambda: moveFiles(paths))
+    tk.Frame(win, height = 30).pack()
+
+    bCopy   = tk.Button(win, text='Move Staged Files', pady = 10, command= lambda: moveFiles(paths))
     bCopy['state'] = 'disabled'
-    bCopy.pack(**button_opt)
+    bCopy.pack() #**button_opt)
+
+    tk.Frame(win, height = 50).pack()
 
     return win
 
