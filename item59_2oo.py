@@ -15,7 +15,7 @@ class Hq:
         self.srcPath  = ""
         self.destPath = ""
         self.paths    = {"src"   : "",
-                    "dest"  : ""}
+                         "dest"  : ""}
         self.text = [
             "Send Files to HQ", 
             "This application will move files modified or edited in the past 24 hours",
@@ -29,9 +29,7 @@ class Hq:
         options['parent'] = win
         options['title'] = ''
 
-        self.results = { 'moved'  : [],
-                    'skipped': []
-                  }
+        self.results = { 'moved'  : [], 'skipped': []}
 
         tk.Label(win, text = self.text[0], font = ('Arial', 18, 'bold'), pady=20).pack()
         tk.Frame(win, height = 10).pack()
@@ -96,11 +94,14 @@ class Hq:
     def showResults(self):
         tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format( len(self.results["moved"]), len(self.results["skipped"]) ) )
 
-    def edited(self,f,cutoff):
-	    #was the file edited in the prior 24 hours
-        return True if ((cutoff - os.path.getmtime(f))/3600 <= 24) else False
+
 
     def moveFiles(self):
+        #inner function instead of private function
+        def edited(f,cutoff):
+	        #was the file edited in the prior 24 hours
+            return True if ((cutoff - os.path.getmtime(f))/3600 <= 24) else False
+
         #copy ALL .txt files MODIFIED/CREATED in the past 24 hours from Folder "src" to Folder "dest"
         file_filter = "*.txt"
         cutoff = time.time()
@@ -108,7 +109,7 @@ class Hq:
         try:
             for file_ in glob.glob(self.paths["src"]+"/"+file_filter):
 
-                if self.edited(file_,cutoff):
+                if edited(file_,cutoff):
                     editTime = datetime.datetime.fromtimestamp( int(os.path.getmtime(file_)) ).strftime("%H:%M:%S")
                     shutil.move( file_, self.paths["dest"] )
                     print( '{} modified at {}.\n-->Moving to batch folder "{}"'.format(file_, editTime, self.paths["dest"]) )
