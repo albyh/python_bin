@@ -77,8 +77,8 @@ class Hq:
             return False
 
     def setFolder(self,source):
-        win.dir_opt['title'] = 'Select the SOURCE directory' if source else 'Select the DESTINATION directory'
-        path = tkFileDialog.askdirectory(**win.dir_opt)
+        self.dir_opt['title'] = 'Select the SOURCE directory' if source else 'Select the DESTINATION directory'
+        path = tkFileDialog.askdirectory(**self.dir_opt)
         if source:
             self.paths["src"] = path
             self.labelSrc.config(text = path)
@@ -93,8 +93,6 @@ class Hq:
 
     def showResults(self):
         tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format( len(self.results["moved"]), len(self.results["skipped"]) ) )
-
-
 
     def moveFiles(self):
         #inner function instead of private function
@@ -128,7 +126,10 @@ class Hq:
 
         self.showResults()
 
-root = tk.Tk()
-win = Hq(root)
-root.mainloop()
+def main():
+    root = tk.Tk()
+    win = Hq(root)
+    root.mainloop()
+
+if __name__ == "__main__": main()
     
