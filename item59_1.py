@@ -33,26 +33,31 @@ def setup():
     tk.Label(win, text = text[2], padx = 20).pack()
     tk.Label(win, text = text[3]).pack()
 
-    tk.Frame(win, height = 30).pack()
+    tk.Frame(win, height = 15).pack()
+
+    con1 = tk.Frame(win, height=100, width = 200, padx=10, pady=10, bd=2, relief='groove' )
+    con1.pack()
 
     # options for buttons
-    button_opt = {'fill': Tkconstants.BOTH, 'padx': 80, 'pady': 10}
+    button_opt = { 'fill': Tkconstants.BOTH, 'padx': 80, 'pady': 10}
 
     # define buttons
-    #tk.Button(win, text='Source Folder', command= lambda: getSource(dir_opt,srcPath)).pack(**button_opt)
-    #tk.Button(win, text='Destination Folder', command= lambda: getDest(dir_opt,destPath)).pack(**button_opt)
-    bSource = tk.Button(win, text='Source Folder', command= lambda: setFolder(dir_opt,labelSrc,paths,True,bCopy)).pack(**button_opt)
-    labelSrc = tk.Label(win, text = options['initialdir'])
+    bSource = tk.Button(con1, width=30, text='Source Folder', command= lambda: setFolder(dir_opt,labelSrc,paths,True,bCopy)).pack(**button_opt)
+    labelSrc = tk.Label(con1, text = options['initialdir'])
     labelSrc.pack()
 
-    bDest   = tk.Button(win, text='Destination Folder', command= lambda: setFolder(dir_opt,labelDest,paths,False,bCopy)).pack(**button_opt)
-    labelDest   = tk.Label(win, text = options['initialdir']) 
+    tk.Frame(win, height = 20).pack()
+    
+    con2 = tk.Frame(win, height=100, width = 200,  padx=10, pady=10,  bd=2, relief='groove' )
+    con2.pack()
+
+    bDest   = tk.Button(con2, width=30, text='Destination Folder', command= lambda: setFolder(dir_opt,labelDest,paths,False,bCopy)).pack(**button_opt)
+    labelDest   = tk.Label(con2, text = options['initialdir']) 
     labelDest.pack()
 
     tk.Frame(win, height = 30).pack()
 
-    bCopy   = tk.Button(win, text='Move Staged Files', pady = 10, command= lambda: moveFiles(paths))
-    bCopy['state'] = 'disabled'
+    bCopy   = tk.Button(win, state='disabled', text='Move Staged Files', pady = 10, command= lambda: moveFiles(paths))
     bCopy.pack() #**button_opt)
 
     tk.Frame(win, height = 50).pack()
