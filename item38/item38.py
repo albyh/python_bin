@@ -12,7 +12,7 @@ def printTable(c,all=True):
             #break
         print(row)        
 #-------------------------------------------------
-#1. Create a database table in RAM named Roster that includes the fields ‘Name’, ‘Species’ and ‘IQ’
+#1. Create a database table in RAM named Roster that includes the fields Name, Species and IQ
 roster = (
     ('Jean-Baptiste Zorg', 'Human', 122),
     ('Korben Dallas','Meat Popsicle', 100),

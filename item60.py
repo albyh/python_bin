@@ -4,6 +4,8 @@ import os
 import glob
 import datetime
 import time
+import sqlite3 as q
+import json
 
 class Hq:
     #def setup():
@@ -11,7 +13,7 @@ class Hq:
     def __init__(self, win):
     
         #win = tk.Tk()        
-        win.title("Send Files to HQ (v2)")
+        win.title("Send Files to HQ (v3)")
         self.srcPath  = ""
         self.destPath = ""
         self.paths    = {"src"   : "",
@@ -23,50 +25,61 @@ class Hq:
             "Select Source and Destination folders then click 'Move Staged Files'",
         ]
         # defining options for opening a directory
-        self.dir_opt = options = {}
-        options['initialdir'] = 'C:/'
-        options['mustexist'] = False
-        options['parent'] = win
-        options['title'] = ''
-
+        self.dir_opt = self.options = {}
+        self.options['initialdir'] = 'C:/'
+        self.options['mustexist'] = False
+        self.options['parent'] = win
+        self.options['title'] = ''
         self.results = { 'moved'  : [], 'skipped': []}
 
+        self.initMenu(win)
+        self.initWin(win)
+
+    def initMenu(self,win):
+        # create a toplevel menu 
+        menubar = tk.Menu(win) 
+        # create a pulldown menu, and add it to the menu bar 
+        filemenu = tk.Menu(menubar, tearoff=False) 
+        exitmenu = tk.Menu(menubar, tearoff=False)
+        filemenu.add_command(label='Select Source Folder', command= lambda: self.setFolder(True)) 
+        filemenu.add_command(label='Select Destination Folder', command= lambda: self.setFolder(False)) 
+        filemenu.add_separator() 
+        filemenu.add_command(label='Exit', command=win.destroy) 
+        exitmenu.add_command(label='About', command=self.aboutBox) 
+        menubar.add_cascade(menu=filemenu, label='File') 
+        menubar.add_cascade(menu=exitmenu, label='Help') 
+        win.config(menu=menubar) 
+
+    def initWin(self, win):
         tk.Label(win, text = self.text[0], font = ('Arial', 18, 'bold'), pady=20).pack()
         tk.Frame(win, height = 10).pack()
         tk.Label(win, text = self.text[1]).pack()
         tk.Label(win, text = self.text[2], padx = 20).pack()
         tk.Label(win, text = self.text[3]).pack()
-
         tk.Frame(win, height = 15).pack()
-
+        #create button container frame
         self.con1 = tk.Frame(win, height=100, width = 200, padx=10, pady=10, bd=2, relief='groove' )
         self.con1.pack()
-
         # options for src/dest buttons
         self.button_opt = { 'fill': Tkconstants.BOTH, 'padx': 80, 'pady': 10}
-
         # define buttons
         self.bSource = tk.Button(self.con1, width=30, text='Source Folder', command= lambda: self.setFolder(True)).pack(**self.button_opt) 
-        self.labelSrc = tk.Label(self.con1, text = options['initialdir'])
+        self.labelSrc = tk.Label(self.con1, text = self.options['initialdir'])
         self.labelSrc.pack()
-
         tk.Frame(win, height = 20).pack()
-    
+        #create button container frame    
         self.con2 = tk.Frame(win, height=100, width = 200,  padx=10, pady=10,  bd=2, relief='groove' )
         self.con2.pack()
-
         self.bDest   = tk.Button(self.con2, width=30, text='Destination Folder', command= lambda: self.setFolder(False)).pack(**self.button_opt)
-        self.labelDest   = tk.Label(self.con2, text = options['initialdir']) 
+        self.labelDest   = tk.Label(self.con2, text = self.options['initialdir']) 
         self.labelDest.pack()
-
         tk.Frame(win, height = 30).pack()
-
-        self.bCopy   = tk.Button(win, state='disabled', text='Move Staged Files', pady = 10, command= lambda: self.moveFiles())
+        self.bCopy   = tk.Button(win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
         self.bCopy.pack() #**self.button_opt)
-
         tk.Frame(win, height = 50).pack()
-
-        #return win
+    
+    def aboutBox(self):
+        tkMessageBox.showinfo( "About", "Send files to HQ.\n\n(c) 2016 HQ" )       
 
     def okToCopy(self):
         if self.paths["src"] != '' and self.paths["dest"] != '' and self.paths["src"] != self.paths["dest"]:
@@ -126,11 +139,88 @@ class Hq:
 
         self.showResults()
 
+class Db:
+    def __init__(self):
+        self.dbConfig = {}
+        self.dbConfig['configFile'] = 'hq.json'
+        #name and path are default values that will be used if hq.json is not found or is corrupt
+        self.dbConfig['dbName']     = 'hq.db'
+        self.dbConfig['dbPath']     = ''
+        self.dbConfig['hqTables']   = ['hq_data', 'hq_history']
+        self.dbConfig['hqFields']   = [
+            'hq_id INTEGER, src_dir TEXT, dest_dir TEXT, last_copy DATE',
+            'copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER',
+            ]
+
+        self.prepDb()
+        self.startDb()
+        
+        print( 'self.dbConfig = {}'.format(self.dbConfig) )
+       
+    def prepDb(self):
+        print('Reading Config. File. Setting up connection to database')
+        try:
+            with open(self.dbConfig['configFile']) as file:
+                hq_json = json.load(file)
+                print('setDb *** '); print(hq_json)
+                self.dbConfig['dbName'] = hq_json['dbName']
+                self.dbConfig['dbPath'] = hq_json['dbPath']
+
+        except IOError as e:
+            tkMessageBox.showerror( "File Error", "Error opening {0} to open file.\n Creating {0} and using defaults.".format(self.dbConfig['configFile']) )
+            print "Error opening {} to open file".format(self.dbConfig['configFile']) #Does not exist OR no read permissions
+            
+            with open(self.dbConfig['configFile'], 'w') as newDbFile:
+                json.dump(self.dbConfig, newDbFile)
+        
+
+    def startDb(self):
+        try:
+            #create database directory or fail gracefully if exists
+            os.makedirs(self.dbConfig['dbPath'])
+
+        except OSError as exception:
+            #if exception.errno != errno.EEXIST:
+            #    raise
+            hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
+            with q.connect(hqdb) as self.con:
+                self.c  = self.con.cursor()
+                print('db should be open')
+                
+                hqStruct = hqBuilder(self)
+                hqStruct.verifyTables(self)
+
+
+                
+class hqBuilder:
+    def __init__(self, db):
+        pass
+    
+    def verifyTables(self, db):
+        for i in range(len(db.dbConfig['hqTables'])):
+            db.c.execute('CREATE TABLE IF NOT EXISTS {}({})'.format(db.dbConfig['hqTables'][i],db.dbConfig['hqFields'][i]) )
+
+    def populateTables(self,db,win):
+        hqDataValues = [100, win.paths['src'], win.paths['src'],None]
+        
+
+    
+
 def main():
+
+
+#if __name__ == "__main__": 
     root = tk.Tk()
     win = Hq(root)
-    root.mainloop()
-    root.destroy()
 
-if __name__ == "__main__": main()
+    #setup/config database/table
+    #if environment has to set defaults there needs to be a window available
     
+    db = Db()
+    db.hqStruct.populateTables(self,win)
+    
+
+    root.mainloop()
+
+
+if __name__ == "__main__": main()    

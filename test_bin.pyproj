@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9a73ef44-fba9-475f-b0d1-0af8b9ff831b}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>item59_2oo.py</StartupFile>
+    <StartupFile>item60.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -64,7 +64,7 @@
     </Compile>
     <Compile Include="item59.py" />
     <Compile Include="item59_1.py" />
-    <Compile Include="item59_2oo.py">
+    <Compile Include="item60.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="tkphone.py">
