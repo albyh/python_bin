@@ -26,10 +26,11 @@ class Hq:
         self.options['mustexist'] = False
         self.options['parent'] = win
         self.options['title'] = ''
-        self.results = {'moved'  : [], 'skipped': [], 'lastXfer': ''}
+        self.results = {'moved'  : [], 'skipped': [], 'lastXfer': None,}
         self.__initMenu()
         self.__initWin()
         self.__getDbPaths()
+        self.__updateXferLabel()
 
     def __initMenu(self):
         # create a toplevel menu 
@@ -73,10 +74,12 @@ class Hq:
         self.locLabels['dest'] = tk.Label(self.con2, text = os.path.normpath(self.paths['dest'])) 
         self.locLabels['dest'].pack()
         tk.Frame(self.win, height = 30).pack()
-        self.bCopy   = tk.Button(self.win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
+        self.bCopy   = tk.Button(self.win, state='normal' if self.__okToCopy else 'disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
+        #self.bCopy   = tk.Button(self.win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
         self.bCopy.pack() #**self.button_opt)
         tk.Frame(self.win, height = 10).pack()
-        self.xferLabel = tk.Label(self.win, text = 'Last Transfer: {}'.format(self.results['lastXfer'])).pack()
+        self.xferLabel = tk.Label(self.win, text = 'Last Transfer: {}'.format(self.results['lastXfer']))
+        self.xferLabel.pack()
         tk.Frame(self.win, height = 50).pack()
     
     def newCopyDate(self):
@@ -93,6 +96,19 @@ class Hq:
                 tkMessageBox.showerror( "Error", "Source and destination can't be the same folder.\nChange source or destination folder." )
             return False
 
+    def __updateXferLabel(self):
+        rows = self.db.q('SELECT last_copy FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
+        assert rows, "Didn't receive a response to last transfer date"
+        if rows[0][0] == None:
+            print('None rows == None')
+            #this should already be None
+            self.results['lastXfer'] = None
+        else:
+            print('prior xfer noted')
+            self.results['lastXfer'] = rows[0][0]
+
+        self.xferLabel.config(text = 'Last Transfer: {}'.format(self.results['lastXfer']))
+
     def setFolder(self,loc):
         #called when the user clicks button to set the source or destination folder
         self.dir_opt['title'] = 'Select the SOURCE directory' if (loc=='src') else 'Select the DESTINATION directory'
@@ -100,7 +116,7 @@ class Hq:
         if path:
             #if a valid path is returned | else don't change anything
             self.paths[loc] = path
-            self.updateLabels(loc)
+            self.__updateLabels(loc)
             sqlStmt = r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], loc, self.paths[loc])
             self.db.x(sqlStmt)
 
@@ -126,7 +142,7 @@ class Hq:
         self.locLabels[loc].config(text = (self.paths[loc]))    
         self.locLabels[loc].config(text = os.path.normpath(self.paths[loc]) )
 
-    def showResults(self):
+    def __showResults(self):
         #display the results of the file copy
         tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format( len(self.results["moved"]), len(self.results["skipped"]) ) )
 
@@ -160,7 +176,19 @@ class Hq:
             print("{} moving {}".format(err,file_))
             pass
 
-        self.showResults()
+
+        self.__saveXfer(cutoff)
+
+    def __saveXfer(self,cutoff):
+        sqlStmt = r"UPDATE {} SET last_copy = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
+        self.db.x(sqlStmt)
+
+        sqlStmt = r"UPDATE {} SET last_copy = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
+        self.db.x(sqlStmt)
+        
+        self.__showResults()
+        self.results["moved"] = []
+        self.results["skipped"] = []
 
 class Db:
     def __init__(self):
