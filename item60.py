@@ -24,8 +24,7 @@ class Hq:
         self.options['mustexist'] = False
         self.options['parent'] = win
         self.options['title'] = ''
-        self.results = {'moved'  : [], 'skipped': []}
-
+        self.results = {'moved'  : [], 'skipped': [], 'lastXfer': ''}
         self.initMenu(win)
         self.initWin(win)
 
@@ -49,11 +48,11 @@ class Hq:
 
     def initWin(self, win):
         tk.Label(win, text = self.text[0], font = ('Arial', 18, 'bold'), pady=20).pack()
-        tk.Frame(win, height = 10).pack()
+        tk.Frame(win, height = 1).pack()
         tk.Label(win, text = self.text[1]).pack()
         tk.Label(win, text = self.text[2], padx = 20).pack()
         tk.Label(win, text = self.text[3]).pack()
-        tk.Frame(win, height = 15).pack()
+        tk.Frame(win, height = 20).pack()
         #create button container frame
         self.con1 = tk.Frame(win, height=100, width = 200, padx=10, pady=10, bd=2, relief='groove' )
         self.con1.pack()
@@ -67,12 +66,14 @@ class Hq:
         #create button container frame    
         self.con2 = tk.Frame(win, height=100, width = 200,  padx=10, pady=10,  bd=2, relief='groove' )
         self.con2.pack()
-        self.bDest   = tk.Button(self.con2, width=30, text='Destination Folder', command= lambda: self.setFolder('dest')).pack(**self.button_opt)
+        self.bDest = tk.Button(self.con2, width=30, text='Destination Folder', command= lambda: self.setFolder('dest')).pack(**self.button_opt)
         self.locLabels['dest'] = tk.Label(self.con2, text = os.path.normpath(self.paths['dest'])) 
         self.locLabels['dest'].pack()
         tk.Frame(win, height = 30).pack()
         self.bCopy   = tk.Button(win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
         self.bCopy.pack() #**self.button_opt)
+        tk.Frame(win, height = 10).pack()
+        self.xferLabel = tk.Label(win, text = 'Last Transfer: {}'.format(self.results['lastXfer'])).pack()
         tk.Frame(win, height = 50).pack()
     
     def newCopyDate(self):
@@ -160,18 +161,29 @@ class Db:
         self.prepDb()
         #self.updateLabels(win)
 
+    #def updateLabels(self,win):
+    #    with q.connect(self.hqdb) as self.con:
+    #        self.con.text_factory = str
+    #        for loc in win.locLabels:
+    #            self.c  = self.con.cursor()
+    #            self.c.execute('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
+    #            row = self.c.fetchone()
+    #            try:
+    #                win.paths[loc] = row[0]
+    #            except:
+    #                pass
+    
+    #    win.updateLabels('src')
+    #    win.updateLabels('dest')
 
     def updateLabels(self,win):
-        with q.connect(self.hqdb) as self.con:
-            self.con.text_factory = str
-            for loc in win.locLabels:
-                self.c  = self.con.cursor()
-                self.c.execute('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
-                row = self.c.fetchone()
-                try:
-                    win.paths[loc] = row[0]
-                except:
-                    pass
+        for loc in win.locLabels:
+            self.c.execute('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
+            row = self.c.fetchone()
+            try:
+                win.paths[loc] = row[0]
+            except:
+                pass
     
         win.updateLabels('src')
         win.updateLabels('dest')
@@ -181,18 +193,14 @@ class Db:
             self.con.text_factory = str
             self.c  = self.con.cursor()
             self.c.execute(r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.dbConfig['hqTables'][0], loc, win.paths[loc]))
-            #win.paths[loc] = loc
-            #print( win.paths[loc] )
 
     def prepDb(self):
-        print('Reading Config. File. Setting up connection to database')
         try:
             with open(self.dbConfig['configFile']) as file:
                 hq_json = json.load(file)
-                print('setDb *** '); print(hq_json)
                 self.dbConfig['dbName'] = hq_json['dbName']
                 self.dbConfig['dbPath'] = hq_json['dbPath']
-
+                print('Config file found.')
         except IOError as e:
             tkMessageBox.showerror( "File Error", "Error opening {0} to open file.\n Creating {0} and using defaults.".format(self.dbConfig['configFile']) )
             print "Error opening {} to open file".format(self.dbConfig['configFile']) #Does not exist OR no read permissions
