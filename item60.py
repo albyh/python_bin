@@ -22,11 +22,11 @@ class Hq:
         ]
         # defining options for opening a directory
         self.dir_opt = self.options = {}
-        self.options['initialdir'] = 'C:/'
+        #self.options['initialdir'] = 'C:/'
         self.options['mustexist'] = False
         self.options['parent'] = win
         self.options['title'] = ''
-        self.results = { 'moved'  : [], 'skipped': []}
+        self.results = {'moved'  : [], 'skipped': []}
 
         self.initMenu(win)
         self.initWin(win)
@@ -60,14 +60,19 @@ class Hq:
         self.button_opt = { 'fill': Tkconstants.BOTH, 'padx': 80, 'pady': 10}
         # define buttons
         self.bSource = tk.Button(self.con1, width=30, text='Source Folder', command= lambda: self.setFolder(True)).pack(**self.button_opt) 
-        self.labelSrc = tk.Label(self.con1, text = self.options['initialdir'])
+#####       
+        d = Db()
+
+        self.labelSrc = tk.Label(self.con1, text = os.path.normpath(self.options['initialdir']))
         self.labelSrc.pack()
         tk.Frame(win, height = 20).pack()
         #create button container frame    
         self.con2 = tk.Frame(win, height=100, width = 200,  padx=10, pady=10,  bd=2, relief='groove' )
         self.con2.pack()
         self.bDest   = tk.Button(self.con2, width=30, text='Destination Folder', command= lambda: self.setFolder(False)).pack(**self.button_opt)
-        self.labelDest   = tk.Label(self.con2, text = self.options['initialdir']) 
+
+#####
+        self.labelDest   = tk.Label(self.con2, text = os.path.normpath(self.options['initialdir'])) 
         self.labelDest.pack()
         tk.Frame(win, height = 30).pack()
         self.bCopy   = tk.Button(win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
@@ -88,13 +93,15 @@ class Hq:
     def setFolder(self,source):
         self.dir_opt['title'] = 'Select the SOURCE directory' if source else 'Select the DESTINATION directory'
         path = tkFileDialog.askdirectory(**self.dir_opt)
+        d = Db()
         if source:
             self.paths["src"] = path
-            self.labelSrc.config(text = path)
+            self.labelSrc.config(text = os.path.normpath(path))
+            d.saveDir(self, 'src')
         else: 
             self.paths["dest"] = path
-            self.labelDest.config(text = path)
-
+            self.labelDest.config(text = os.path.normpath(path))
+            d.saveDir(self, 'dest')
         if self.okToCopy():
             self.bCopy['state'] = 'normal'
         else:
@@ -147,10 +154,25 @@ class Db:
             'hq_id INTEGER, src_dir TEXT, dest_dir TEXT, last_copy DATE',
             'copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER',
             ]
+        self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
+        self.src = ''
+        self.dest = ''
 
-        print( 'self.dbConfig = {}'.format(self.dbConfig) )
+
+        #print( 'self.dbConfig = {}'.format(self.dbConfig) )
         self.prepDb()
-       
+
+    def getPaths(self):
+        pass
+#####
+
+    def saveDir(self, win, loc):
+        with q.connect(self.hqdb) as self.con:
+            self.c  = self.con.cursor()
+            self.c.execute(r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.dbConfig['hqTables'][0], loc, win.paths[loc]))
+            win.paths[loc] = loc
+            #print( win.paths[loc] )
+
     def prepDb(self):
         print('Reading Config. File. Setting up connection to database')
         try:
@@ -176,12 +198,13 @@ class Db:
         except OSError as exception:
             #if exception.errno != errno.EEXIST:
             #    raise
-            hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
-            with q.connect(hqdb) as self.con:
+            #self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
+            with q.connect(self.hqdb) as self.con:
                 self.c  = self.con.cursor()
-                print('db open *success*')
                 self.verifyTables()
+                #=========================
                 #this will return 0 if empty table and 1 if ! empty but there has to be a better way?
+                #=========================
                 recs = self.c.execute('SELECT COUNT(*) FROM {} LIMIT 1'.format(self.dbConfig['hqTables'][0]))
                 x = recs.fetchone()
                 if x[0] == 0:
@@ -193,7 +216,7 @@ class Db:
             self.c.execute('CREATE TABLE IF NOT EXISTS {}({})'.format(self.dbConfig['hqTables'][i],self.dbConfig['hqFields'][i]) )
 
     def populateTables(self):
-        hqDataVals = [100, "", "", None]
+        hqDataVals = [100, "c:/", "c:/", None]
         print( self.c.rowcount)
         self.c.execute('INSERT INTO {} VALUES (?,?,?,?)'.format(self.dbConfig['hqTables'][0]), (hqDataVals[0],hqDataVals[1],hqDataVals[2],hqDataVals[3],))
         print('added {}'.format(hqDataVals))
