@@ -20,7 +20,7 @@ class Hq:
         ]
         # defining options for opening a directory
         self.dir_opt = self.options = {}
-        #self.options['initialdir'] = 'C:/'
+        self.options['initialdir'] = 'C:/'
         self.options['mustexist'] = False
         self.options['parent'] = win
         self.options['title'] = ''
@@ -33,14 +33,17 @@ class Hq:
         # create a toplevel menu 
         menubar = tk.Menu(win) 
         # create a pulldown menu, and add it to the menu bar 
-        filemenu = tk.Menu(menubar, tearoff=False) 
-        exitmenu = tk.Menu(menubar, tearoff=False)
+        filemenu    = tk.Menu(menubar, tearoff=False)
+        optionmenu  = tk.Menu(menubar, tearoff=False) 
+        exitmenu    = tk.Menu(menubar, tearoff=False)
         filemenu.add_command(label='Select Source Folder', command= lambda: self.setFolder('src')) 
         filemenu.add_command(label='Select Destination Folder', command= lambda: self.setFolder('dest')) 
         filemenu.add_separator() 
         filemenu.add_command(label='Exit', command=win.destroy) 
+        optionmenu.add_command(label='Manually enter last copy date/time', command=self.newCopyDate) 
         exitmenu.add_command(label='About', command=self.aboutBox) 
         menubar.add_cascade(menu=filemenu, label='File') 
+        menubar.add_cascade(menu=optionmenu, label='Options') 
         menubar.add_cascade(menu=exitmenu, label='Help') 
         win.config(menu=menubar) 
 
@@ -72,6 +75,9 @@ class Hq:
         self.bCopy.pack() #**self.button_opt)
         tk.Frame(win, height = 50).pack()
     
+    def newCopyDate(self):
+        tkMessageBox.showinfo( "Options", "Enter a new date/time to be used " )       
+
     def aboutBox(self):
         tkMessageBox.showinfo( "About", "Send files to HQ.\n\n(c) 2016 HQ" )       
 
