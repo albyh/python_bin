@@ -3,8 +3,7 @@ import Tkinter as tk, Tkconstants, tkFileDialog, tkMessageBox
 import shutil
 import os
 import glob
-import datetime
-import time
+import datetime, time
 import sqlite3 as q
 import json
 
