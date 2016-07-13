@@ -11,11 +11,7 @@ class Hq:
     #def setup():
     # the first code which is executed, when a new instance of a class is created. 
     def __init__(self, win):
-    
-        #win = tk.Tk()        
         win.title("Send Files to HQ (v3)")
-        self.srcPath  = ""
-        self.destPath = ""
         self.paths    = {"src"   : "",
                          "dest"  : ""}
         self.text = [
@@ -152,10 +148,8 @@ class Db:
             'copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER',
             ]
 
-        self.prepDb()
-        self.startDb()
-        
         print( 'self.dbConfig = {}'.format(self.dbConfig) )
+        self.prepDb()
        
     def prepDb(self):
         print('Reading Config. File. Setting up connection to database')
@@ -172,9 +166,9 @@ class Db:
             
             with open(self.dbConfig['configFile'], 'w') as newDbFile:
                 json.dump(self.dbConfig, newDbFile)
-        
+        self.verifyDb() 
 
-    def startDb(self):
+    def verifyDb(self):
         try:
             #create database directory or fail gracefully if exists
             os.makedirs(self.dbConfig['dbPath'])
@@ -185,42 +179,31 @@ class Db:
             hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
             with q.connect(hqdb) as self.con:
                 self.c  = self.con.cursor()
-                print('db should be open')
-                
-                hqStruct = hqBuilder(self)
-                hqStruct.verifyTables(self)
+                print('db open *success*')
+                self.verifyTables()
+                #this will return 0 if empty table and 1 if ! empty but there has to be a better way?
+                recs = self.c.execute('SELECT COUNT(*) FROM {} LIMIT 1'.format(self.dbConfig['hqTables'][0]))
+                x = recs.fetchone()
+                if x[0] == 0:
+                    print( 'no records...populating table')
+                    self.populateTables()
 
+    def verifyTables(self):
+        for i in range(len(self.dbConfig['hqTables'])):
+            self.c.execute('CREATE TABLE IF NOT EXISTS {}({})'.format(self.dbConfig['hqTables'][i],self.dbConfig['hqFields'][i]) )
 
-                
-class hqBuilder:
-    def __init__(self, db):
-        pass
-    
-    def verifyTables(self, db):
-        for i in range(len(db.dbConfig['hqTables'])):
-            db.c.execute('CREATE TABLE IF NOT EXISTS {}({})'.format(db.dbConfig['hqTables'][i],db.dbConfig['hqFields'][i]) )
-
-    def populateTables(self,db,win):
-        hqDataValues = [100, win.paths['src'], win.paths['src'],None]
-        
-
-    
+    def populateTables(self):
+        hqDataVals = [100, "", "", None]
+        print( self.c.rowcount)
+        self.c.execute('INSERT INTO {} VALUES (?,?,?,?)'.format(self.dbConfig['hqTables'][0]), (hqDataVals[0],hqDataVals[1],hqDataVals[2],hqDataVals[3],))
+        print('added {}'.format(hqDataVals))
+        print( self.c.rowcount)
+        self.con.commit()
 
 def main():
-
-
-#if __name__ == "__main__": 
     root = tk.Tk()
     win = Hq(root)
-
-    #setup/config database/table
-    #if environment has to set defaults there needs to be a window available
-    
     db = Db()
-    db.hqStruct.populateTables(self,win)
-    
-
     root.mainloop()
-
 
 if __name__ == "__main__": main()    
