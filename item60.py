@@ -27,11 +27,11 @@ class Hq:
         self.options['parent'] = win
         self.options['title'] = ''
         self.results = {'moved'  : [], 'skipped': [], 'lastXfer': ''}
-        self.initMenu()
-        self.initWin()
-        self.getDbPaths()
+        self.__initMenu()
+        self.__initWin()
+        self.__getDbPaths()
 
-    def initMenu(self):
+    def __initMenu(self):
         # create a toplevel menu 
         menubar = tk.Menu(self.win) 
         # create a pulldown menu, and add it to the menu bar 
@@ -49,7 +49,7 @@ class Hq:
         menubar.add_cascade(menu=exitmenu, label='Help') 
         self.win.config(menu=menubar) 
 
-    def initWin(self):
+    def __initWin(self):
         tk.Label(self.win, text = self.text[0], font = ('Arial', 18, 'bold'), pady=20).pack()
         tk.Frame(self.win, height = 1).pack()
         tk.Label(self.win, text = self.text[1]).pack()
@@ -90,7 +90,7 @@ class Hq:
             return True
         else:
             if self.paths["src"] == self.paths["dest"]:
-                tkMessageBox.showerror( "Error", "Source and destination can't be the same folder./nChange one of the folders." )
+                tkMessageBox.showerror( "Error", "Source and destination can't be the same folder.\nChange source or destination folder." )
             return False
 
     def setFolder(self,loc):
@@ -109,19 +109,19 @@ class Hq:
         else:
             self.bCopy['state'] = 'disabled'
 
-    def getDbPaths(self):
+    def __getDbPaths(self):
         for loc in self.locLabels:
             rows = self.db.q('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
             assert len(rows) is 1, "Didn't receive exactly one item back."
             
             try:
                 self.paths[loc] = rows[0][0] if os.path.isdir( rows[0][0] ) else os.path.normpath('C:/')
-                self.updateLabels(loc)
+                self.__updateLabels(loc)
             except:
                 print('Error retrieving saved folder. Setting to root.')
                 self.paths[loc] = os.path.normpath('C:/')
 
-    def updateLabels(self,loc):
+    def __updateLabels(self,loc):
         #Updates the label passed as 'loc' with the currently selected path 
         self.locLabels[loc].config(text = (self.paths[loc]))    
         self.locLabels[loc].config(text = os.path.normpath(self.paths[loc]) )
@@ -172,10 +172,10 @@ class Db:
         self.dbConfig['hqTables']   = ['hq_data', 'hq_history']
         self.dbConfig['hqFields']   = [
             'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_copy DATE',
-            'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES hq_data(hq_id)',
+            'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
             ]
         #prefer not to hardcode "hq_data" table above but it's throwing an exception
-        #'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGH KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
+        #'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
 
         self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
 
@@ -205,7 +205,7 @@ class Db:
                 self.dbConfig['dbPath'] = hq_json['dbPath']
                 print('Config file found.')
         except IOError as e:
-            tkMessageBox.showerror( "File Error", "Error opening {0} to open file.\n Creating {0} and using defaults.".format(self.dbConfig['configFile']) )
+            tkMessageBox.showerror( "File Error", "Error opening F:\Skydrive\dev\projects\python\test_bin\source{0} to open file.\n Creating {0} and using defaults.".format(self.dbConfig['configFile']) )
             print "Error opening {} to open file".format(self.dbConfig['configFile']) #Does not exist OR no read permissions
             
             with open(self.dbConfig['configFile'], 'w') as newDbFile:
@@ -233,7 +233,6 @@ class Db:
                 if x[0] == 0:
                     print( 'no records...populating table')
                     self.populateTables()
-            
 
     def verifyTables(self):
         for i in range(len(self.dbConfig['hqTables'])):
