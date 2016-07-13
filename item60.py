@@ -83,9 +83,9 @@ class Hq:
         tkMessageBox.showinfo( "Options", "Enter a new date/time to be used " )       
 
     def aboutBox(self):
-        tkMessageBox.showinfo( "About", "Send files to HQ.\n\n(c) 2016 HQ" )       
+        tkMessageBox.showinfo( "About", "Send files to HQ.\n\n(c)  2016 HQ" )       
 
-    def okToCopy(self):
+    def __okToCopy(self):
         if self.paths["src"] != '' and self.paths["dest"] != '' and self.paths["src"] != self.paths["dest"]:
             return True
         else:
@@ -97,20 +97,21 @@ class Hq:
         #called when the user clicks button to set the source or destination folder
         self.dir_opt['title'] = 'Select the SOURCE directory' if (loc=='src') else 'Select the DESTINATION directory'
         path = tkFileDialog.askdirectory(**self.dir_opt)
-        d = Db()
-        self.paths[loc] = path
-        #self.locLabels[loc].config(text = os.path.normpath(path))
-        self.updateLabels(loc)
-        d.saveDir(self, loc)
+        if path:
+            #if a valid path is returned | else don't change anything
+            self.paths[loc] = path
+            self.updateLabels(loc)
+            sqlStmt = r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], loc, self.paths[loc])
+            self.db.x(sqlStmt)
 
-        if self.okToCopy():
+        if self.__okToCopy():
             self.bCopy['state'] = 'normal'
         else:
             self.bCopy['state'] = 'disabled'
 
     def getDbPaths(self):
         for loc in self.locLabels:
-            rows = self.db.query('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
+            rows = self.db.q('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
             assert len(rows) is 1, "Didn't receive exactly one item back."
             
             try:
@@ -170,54 +171,31 @@ class Db:
         self.dbConfig['dbPath']     = ''
         self.dbConfig['hqTables']   = ['hq_data', 'hq_history']
         self.dbConfig['hqFields']   = [
-            'hq_id INTEGER, src_dir TEXT, dest_dir TEXT, last_copy DATE',
-            'copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER',
+            'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_copy DATE',
+            'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES hq_data(hq_id)',
             ]
+        #prefer not to hardcode "hq_data" table above but it's throwing an exception
+        #'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGH KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
+
         self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
-        #self.src = ''
-        #self.dest = ''
+
         self.prepDb()
 
-    def query(self, sqlStmt):
+    def q(self, sqlStmt):
+        # q=query
         cursor = self.con.cursor()
         cursor.execute(sqlStmt)
         result = cursor.fetchall()
         cursor.close()
         return result
-        
 
-    #def updateLabels(self,win):
-    #    with q.connect(self.hqdb) as self.con:
-    #        self.con.text_factory = str
-    #        for loc in win.locLabels:
-    #            self.c  = self.con.cursor()
-    #            self.c.execute('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
-    #            row = self.c.fetchone()
-    #            try:
-    #                win.paths[loc] = row[0]
-    #            except:
-    #                pass
-    
-    #    win.updateLabels('src')
-    #    win.updateLabels('dest')
-
-    #def updateLabels(self,win):
-    #    for loc in win.locLabels:
-    #        self.c.execute('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
-    #        row = self.c.fetchone()
-    #        try:
-    #            win.paths[loc] = row[0]
-    #        except:
-    #            pass
-    
-    #    win.updateLabels('src')
-    #    win.updateLabels('dest')
-
-    def saveDir(self, win, loc):
-        with q.connect(self.hqdb) as self.con:
-            self.con.text_factory = str
-            self.c  = self.con.cursor()
-            self.c.execute(r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.dbConfig['hqTables'][0], loc, win.paths[loc]))
+    def x(self, sqlStmt):
+        # x=execute
+        cursor = self.con.cursor()
+        cursor.execute(sqlStmt)
+        self.con.commit()
+        cursor.close()
+        #return result
 
     def prepDb(self):
         try:
@@ -262,7 +240,7 @@ class Db:
             self.c.execute('CREATE TABLE IF NOT EXISTS {}({})'.format(self.dbConfig['hqTables'][i],self.dbConfig['hqFields'][i]) )
 
     def populateTables(self):
-        hqDataVals = [100, "c:/", "c:/", None]
+        hqDataVals = [100, "C:/", "C:/", None]
         print( self.c.rowcount)
         self.c.execute('INSERT INTO {} VALUES (?,?,?,?)'.format(self.dbConfig['hqTables'][0]), (hqDataVals[0],hqDataVals[1],hqDataVals[2],hqDataVals[3],))
         print('added {}'.format(hqDataVals))
@@ -271,12 +249,8 @@ class Db:
 
 def main():
     root = tk.Tk()
-
     db = Db()
     win = Hq(root, db)
-
-    #db.updateLabels(win)
-    
 
     root.mainloop()
 
