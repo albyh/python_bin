@@ -1,3 +1,4 @@
+#from __future__ import unicode_literals
 import Tkinter as tk, Tkconstants, tkFileDialog, tkMessageBox
 import shutil
 import os
@@ -8,12 +9,10 @@ import sqlite3 as q
 import json
 
 class Hq:
-    #def setup():
-    # the first code which is executed, when a new instance of a class is created. 
     def __init__(self, win):
         win.title("Send Files to HQ (v3)")
-        self.paths    = {"src"   : "",
-                         "dest"  : ""}
+        self.paths     = {'src': '', 'dest': '' } #actual path
+        self.locLabels = {'src': '', 'dest': '' } #Tkinter pointer
         self.text = [
             "Send Files to HQ", 
             "This application will move files modified or edited in the past 24 hours",
@@ -37,8 +36,8 @@ class Hq:
         # create a pulldown menu, and add it to the menu bar 
         filemenu = tk.Menu(menubar, tearoff=False) 
         exitmenu = tk.Menu(menubar, tearoff=False)
-        filemenu.add_command(label='Select Source Folder', command= lambda: self.setFolder(True)) 
-        filemenu.add_command(label='Select Destination Folder', command= lambda: self.setFolder(False)) 
+        filemenu.add_command(label='Select Source Folder', command= lambda: self.setFolder('src')) 
+        filemenu.add_command(label='Select Destination Folder', command= lambda: self.setFolder('dest')) 
         filemenu.add_separator() 
         filemenu.add_command(label='Exit', command=win.destroy) 
         exitmenu.add_command(label='About', command=self.aboutBox) 
@@ -59,21 +58,16 @@ class Hq:
         # options for src/dest buttons
         self.button_opt = { 'fill': Tkconstants.BOTH, 'padx': 80, 'pady': 10}
         # define buttons
-        self.bSource = tk.Button(self.con1, width=30, text='Source Folder', command= lambda: self.setFolder(True)).pack(**self.button_opt) 
-#####       
-        d = Db()
-
-        self.labelSrc = tk.Label(self.con1, text = os.path.normpath(self.options['initialdir']))
-        self.labelSrc.pack()
+        self.bSource = tk.Button(self.con1, width=30, text='Source Folder', command= lambda: self.setFolder('src')).pack(**self.button_opt) 
+        self.locLabels['src'] = tk.Label(self.con1, text = os.path.normpath(self.paths['src']))
+        self.locLabels['src'].pack()
         tk.Frame(win, height = 20).pack()
         #create button container frame    
         self.con2 = tk.Frame(win, height=100, width = 200,  padx=10, pady=10,  bd=2, relief='groove' )
         self.con2.pack()
-        self.bDest   = tk.Button(self.con2, width=30, text='Destination Folder', command= lambda: self.setFolder(False)).pack(**self.button_opt)
-
-#####
-        self.labelDest   = tk.Label(self.con2, text = os.path.normpath(self.options['initialdir'])) 
-        self.labelDest.pack()
+        self.bDest   = tk.Button(self.con2, width=30, text='Destination Folder', command= lambda: self.setFolder('dest')).pack(**self.button_opt)
+        self.locLabels['dest'] = tk.Label(self.con2, text = os.path.normpath(self.paths['dest'])) 
+        self.locLabels['dest'].pack()
         tk.Frame(win, height = 30).pack()
         self.bCopy   = tk.Button(win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
         self.bCopy.pack() #**self.button_opt)
@@ -87,25 +81,26 @@ class Hq:
             return True
         else:
             if self.paths["src"] == self.paths["dest"]:
-                tkMessageBox.showerror( "Error", "Source and destination can't be the same folder." )
+                tkMessageBox.showerror( "Error", "Source and destination can't be the same folder./nChange one of the folders." )
             return False
 
-    def setFolder(self,source):
-        self.dir_opt['title'] = 'Select the SOURCE directory' if source else 'Select the DESTINATION directory'
+    def setFolder(self,loc):
+        self.dir_opt['title'] = 'Select the SOURCE directory' if (loc=='src') else 'Select the DESTINATION directory'
         path = tkFileDialog.askdirectory(**self.dir_opt)
         d = Db()
-        if source:
-            self.paths["src"] = path
-            self.labelSrc.config(text = os.path.normpath(path))
-            d.saveDir(self, 'src')
-        else: 
-            self.paths["dest"] = path
-            self.labelDest.config(text = os.path.normpath(path))
-            d.saveDir(self, 'dest')
+        self.paths[loc] = path
+        #self.locLabels[loc].config(text = os.path.normpath(path))
+        self.updateLabels(loc)
+        d.saveDir(self, loc)
+
         if self.okToCopy():
             self.bCopy['state'] = 'normal'
         else:
             self.bCopy['state'] = 'disabled'
+
+    def updateLabels(self,loc):
+        self.locLabels[loc].config(text = (self.paths[loc]))    
+        self.locLabels[loc].config(text = os.path.normpath(  self.paths[loc]  ) )
 
     def showResults(self):
         tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format( len(self.results["moved"]), len(self.results["skipped"]) ) )
@@ -155,22 +150,33 @@ class Db:
             'copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER',
             ]
         self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
-        self.src = ''
-        self.dest = ''
-
-
-        #print( 'self.dbConfig = {}'.format(self.dbConfig) )
+        #self.src = ''
+        #self.dest = ''
         self.prepDb()
+        #self.updateLabels(win)
 
-    def getPaths(self):
-        pass
-#####
+
+    def updateLabels(self,win):
+        with q.connect(self.hqdb) as self.con:
+            self.con.text_factory = str
+            for loc in win.locLabels:
+                self.c  = self.con.cursor()
+                self.c.execute('SELECT {}_dir FROM hq_data WHERE hq_id = 100'.format(loc))
+                row = self.c.fetchone()
+                try:
+                    win.paths[loc] = row[0]
+                except:
+                    pass
+    
+        win.updateLabels('src')
+        win.updateLabels('dest')
 
     def saveDir(self, win, loc):
         with q.connect(self.hqdb) as self.con:
+            self.con.text_factory = str
             self.c  = self.con.cursor()
             self.c.execute(r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.dbConfig['hqTables'][0], loc, win.paths[loc]))
-            win.paths[loc] = loc
+            #win.paths[loc] = loc
             #print( win.paths[loc] )
 
     def prepDb(self):
@@ -200,6 +206,7 @@ class Db:
             #    raise
             #self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
             with q.connect(self.hqdb) as self.con:
+                self.con.text_factory = str
                 self.c  = self.con.cursor()
                 self.verifyTables()
                 #=========================
@@ -210,6 +217,7 @@ class Db:
                 if x[0] == 0:
                     print( 'no records...populating table')
                     self.populateTables()
+            
 
     def verifyTables(self):
         for i in range(len(self.dbConfig['hqTables'])):
@@ -227,6 +235,9 @@ def main():
     root = tk.Tk()
     win = Hq(root)
     db = Db()
+    db.updateLabels(win)
+    
+
     root.mainloop()
 
 if __name__ == "__main__": main()    
