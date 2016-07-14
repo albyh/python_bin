@@ -29,8 +29,9 @@ class Hq:
         self.results = {'moved'  : [], 'skipped': [], 'lastXfer': None }
         self.__initMenu()
         self.__initWin()
+        self.__setHistoryLabel()
         self.__getDbPaths()
-        self.__updateXferLabel()
+        self.__setXferLabel()
 
     def __initMenu(self):
         # create a toplevel menu 
@@ -102,7 +103,17 @@ class Hq:
                     tkMessageBox.showerror( "Error", "Source and destination can't be the same folder.\nChange source or destination folder." )
             return False
 
-    def __updateXferLabel(self):
+    def __setHistoryLabel(self):
+        #update the last transfer data and stats
+        rows = self.db.q('SELECT move_date, copied, failed, skipped FROM {0} WHERE move_date = (SELECT MAX(move_date) FROM {0}) AND hq_id = 100'.format(self.db.dbConfig['hqTables'][1])) 
+        assert len(rows) is 1, "Didn't receive exactly one item back."
+        xferDate, copied, failed, skipped = rows[0]
+
+        self.xferLabel.config(text = 'Last Transfer Completed: {}'.format( xferDate ))
+        self.xferMove.config(text = 'Files Moved Last Transfer: {}'.format( copied ))
+        self.xferSkip.config(text = 'Files Skipped Last Transfer: {}'.format( skipped ))
+
+    def __setXferLabel(self):
         rows = self.db.q('SELECT last_move FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
         assert rows, "Didn't receive a response to last transfer date"
         if rows[0][0] == None:
@@ -122,7 +133,7 @@ class Hq:
         if path:
             #if a valid path is returned | else don't change anything
             self.paths[loc] = path
-            self.__updateLabels(loc)
+            self.__setPathLabel(loc)
             sqlStmt = r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], loc, self.paths[loc])
             self.db.x(sqlStmt)
 
@@ -136,7 +147,7 @@ class Hq:
             
             try:
                 self.paths[loc] = rows[0][0] if os.path.isdir( rows[0][0] ) else os.path.normpath('C:/')
-                self.__updateLabels(loc)
+                self.__setPathLabel(loc)
             except:
                 print('Error retrieving saved folder. Setting to root.')
                 self.paths[loc] = os.path.normpath('C:/')
@@ -146,7 +157,7 @@ class Hq:
             self.db.newTables = False
 
 
-    def __updateLabels(self,loc):
+    def __setPathLabel(self,loc):
         #Updates the label passed as 'loc' with the currently selected path 
         self.locLabels[loc].config(text = (self.paths[loc]))    
         self.locLabels[loc].config(text = os.path.normpath(self.paths[loc]) )
@@ -265,15 +276,6 @@ class Db:
         cursor.execute(sqlStmt, values) if values else cursor.execute(sqlStmt)
         self.con.commit()
         cursor.close()
-
-
-    #def x(self, sqlStmt):
-    #    # x=execute
-    #    cursor = self.con.cursor()
-    #    cursor.execute(sqlStmt)
-    #    self.con.commit()
-    #    cursor.close()
-    #    #return result
 
     def prepDb(self):
         try:
