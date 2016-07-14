@@ -29,25 +29,25 @@ class Hq:
         self.results = {'moved'  : [], 'skipped': [], 'lastXfer': None }
         self.__initMenu()
         self.__initWin()
-        self.__setHistoryLabel()
+        self.__setHistoryLabels()
         self.__getDbPaths()
-        self.__setXferLabel()
 
     def __initMenu(self):
         # create a toplevel menu 
         menubar = tk.Menu(self.win) 
         # create a pulldown menu, and add it to the menu bar 
         filemenu    = tk.Menu(menubar, tearoff=False)
-        optionmenu  = tk.Menu(menubar, tearoff=False) 
+        reportmenu  = tk.Menu(menubar, tearoff=False) 
         exitmenu    = tk.Menu(menubar, tearoff=False)
-        filemenu.add_command(label='Select Source Folder', command= lambda: self.setFolder('src')) 
-        filemenu.add_command(label='Select Destination Folder', command= lambda: self.setFolder('dest')) 
+        filemenu.add_command(label='Select Source Folder'       , command= lambda: self.setFolder('src')) 
+        filemenu.add_command(label='Select Destination Folder'  , command= lambda: self.setFolder('dest')) 
         filemenu.add_separator() 
-        filemenu.add_command(label='Exit', command=self.win.destroy) 
-        optionmenu.add_command(label='Manually enter last copy date/time', command=self.newCopyDate) 
-        exitmenu.add_command(label='About', command=self.aboutBox) 
+        filemenu.add_command(label='Exit'                                  , command=self.win.destroy) 
+        reportmenu.add_command(label='Results of last 10 Transfers'        , command=self.showXfers) 
+        reportmenu.add_command(label='List files included in last transfer', command=self.showHistory) 
+        exitmenu.add_command(label='About'                                 , command=self.aboutBox) 
         menubar.add_cascade(menu=filemenu, label='File') 
-        menubar.add_cascade(menu=optionmenu, label='Options') 
+        menubar.add_cascade(menu=reportmenu, label='Reports') 
         menubar.add_cascade(menu=exitmenu, label='Help') 
         self.win.config(menu=menubar) 
 
@@ -87,8 +87,11 @@ class Hq:
         self.xferSkip.pack()
         tk.Frame(self.win, height = 50).pack()
     
-    def newCopyDate(self):
-        tkMessageBox.showinfo( "Options", "Enter a new date/time to be used " )       
+    def showHistory(self):
+        tkMessageBox.showinfo( "Report", "Files in the last transfer" )       
+
+    def showXfers(self):
+        tkMessageBox.showinfo( "Report", "Last 10 Transfers" )       
 
     def aboutBox(self):
         tkMessageBox.showinfo( "About", "Send files to HQ.\n\n(c)  2016 HQ" )       
@@ -103,28 +106,15 @@ class Hq:
                     tkMessageBox.showerror( "Error", "Source and destination can't be the same folder.\nChange source or destination folder." )
             return False
 
-    def __setHistoryLabel(self):
+    def __setHistoryLabels(self):
         #update the last transfer data and stats
         rows = self.db.q('SELECT move_date, copied, failed, skipped FROM {0} WHERE move_date = (SELECT MAX(move_date) FROM {0}) AND hq_id = 100'.format(self.db.dbConfig['hqTables'][1])) 
         assert len(rows) is 1, "Didn't receive exactly one item back."
         xferDate, copied, failed, skipped = rows[0]
 
-        self.xferLabel.config(text = 'Last Transfer Completed: {}'.format( xferDate ))
+        self.xferLabel.config(text = 'Last Transfer Completed: {}'.format( xferDate.strftime( "%b %d, %Y at  %H:%M:%S")) )
         self.xferMove.config(text = 'Files Moved Last Transfer: {}'.format( copied ))
         self.xferSkip.config(text = 'Files Skipped Last Transfer: {}'.format( skipped ))
-
-    def __setXferLabel(self):
-        rows = self.db.q('SELECT last_move FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
-        assert rows, "Didn't receive a response to last transfer date"
-        if rows[0][0] == None:
-            print('None rows == None')
-            #this should already be None
-            self.results['lastXfer'] = None
-        else:
-            print('prior xfer noted')
-            self.results['lastXfer'] = rows[0][0]
-######################
-        #self.xferLabel.config(text = 'Last Transfer: {}'.format(self.results['lastXfer'].strftime('%h:%m')))
 
     def setFolder(self,loc):
         #called when the user clicks button to set the source or destination folder
@@ -210,36 +200,27 @@ class Hq:
 
         except IOError as err:
             print("I/O Error ({}) moving {}.".format(err,file_))
-            raise
+            pass
 
         except Exception as err:
             print("{} moving {}".format(err,file_))
-            raise
+            pass
 
-
-
-        #PASS IN THE VALUES TUPLE 
         self.__saveXfer(cutoff, moved, skipped)
-        
 
     def __saveXfer(self, cutoff, moved, skipped):
         sqlStmt = r"UPDATE {} SET last_move = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
         self.db.x(sqlStmt)
-
-        print('update value list for hq_history')
-        #sqlStmt = r"'INSERT INTO {} VALUES (?,?,?,?,?)'".format(self.db.dbConfig['hqTables'][1]), (100, cutoff, len(self.results['moved']), 0, len(self.results['skipped']))
-        
-        #sqlStmt = r"'INSERT INTO {} VALUES (?,?,?,?,?)'".format(self.db.dbConfig['hqTables'][1])
-        #sqlStmt += r",(100, {}, {}, 0, {} )".format( cutoff,len(self.results['moved']),len(self.results['skipped']))
-
-        print( "FIX INSERT INTO TABLE 2")                
         sqlStmt = r"INSERT INTO hq_history VALUES (?,?,?,?,?)"
         values = (100, cutoff, len(moved), 0, len(skipped))
         self.db.x(sqlStmt, values)
         
         self.__showResults(len(moved), len(skipped))
+        self.__setHistoryLabels()
         self.results["moved"] = moved
         self.results["skipped"] = skipped
+
+    
 
 class Db:
     def __init__(self):
@@ -250,14 +231,11 @@ class Db:
         self.dbConfig['dbName']     = 'hq.db'
         self.dbConfig['dbPath']     = ''
         self.dbConfig['hqTables']   = ['hq_data', 'hq_history']
-        #YOU CAN SET A FIELD TO TYPE=TIMESTAMP AS IT'S A PYTHON CONVERSION IF YOU ALSO INCLUDE detect_types=q.PARSE_DECLTYPES in the database connection  
+        #TO SET a field to TYPE=TIMESTAMP you also must INCLUDE detect_types=q.PARSE_DECLTYPES in the database connection command
         self.dbConfig['hqFields']   = [
             'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_move TIMESTAMP',
             'hq_id INTEGER, move_date TIMESTAMP, moved INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
             ]
-        #prefer not to hardcode "hq_data" table above but it's throwing an exception
-        #'hq_id INTEGER, move_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
-
         self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
 
         self.prepDb()
@@ -283,10 +261,11 @@ class Db:
                 hq_json = json.load(file)
                 self.dbConfig['dbName'] = hq_json['dbName']
                 self.dbConfig['dbPath'] = hq_json['dbPath']
-                print('Config file found.')
+
         except IOError as e:
             tkMessageBox.showerror( "File Error", "Error opening F:\Skydrive\dev\projects\python\test_bin\source{0} to open file.\n Creating {0} and using defaults.".format(self.dbConfig['configFile']) )
-            print "Error opening {} to open file".format(self.dbConfig['configFile']) #Does not exist OR no read permissions
+            #Does not exist OR no read permissions
+            print "Error opening {} to open file".format(self.dbConfig['configFile']) 
             
             with open(self.dbConfig['configFile'], 'w') as newDbFile:
                 json.dump(self.dbConfig, newDbFile)
@@ -306,7 +285,7 @@ class Db:
                 self.c  = self.con.cursor()
                 self.verifyTables()
                 #=========================
-                #this will return 0 if empty table and 1 if ! empty but there has to be a better way?
+                #this will return 0 if empty table and 1 if !empty but there has to be a better way?
                 #=========================
                 recs = self.c.execute('SELECT COUNT(*) FROM {} LIMIT 1'.format(self.dbConfig['hqTables'][0]))
                 x = recs.fetchone()
@@ -328,8 +307,23 @@ class Db:
         print( self.c.rowcount)
         self.con.commit()
 
+def centerRoot(root):
+    w = 600 # width for the Tk root
+    h = 600 # height for the Tk root
+    ws = root.winfo_screenwidth() # width of the screen
+    hs = root.winfo_screenheight() # height of the screen
+
+    # calculate x and y coordinates for the Tk root window
+    x = (ws/2) - (w/2)
+    y = (hs/2) - (h/2)
+
+    # set the dimensions of the screen 
+    # and where it is placed
+    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
 def main():
     root = tk.Tk()
+    centerRoot(root)
     db = Db()
     win = Hq(root, db)
 
