@@ -222,8 +222,9 @@ class Hq:
         #sqlStmt += r",(100, {}, {}, 0, {} )".format( cutoff,len(self.results['moved']),len(self.results['skipped']))
 
         print( "FIX INSERT INTO TABLE 2")                
-        sqlStmt = r"INSERT INTO hq_history VALUES (100, 0, 0, 0, 0)"
-        self.db.x(sqlStmt)
+        sqlStmt = r"INSERT INTO hq_history VALUES (?,?,?,?,?)"
+        values = (100, cutoff, len(moved), 0, len(skipped))
+        self.db.x(sqlStmt, values)
         
         self.__showResults(len(moved), len(skipped))
         self.results["moved"] = moved
@@ -241,7 +242,7 @@ class Db:
         #YOU CAN SET A FIELD TO TYPE=TIMESTAMP AS IT'S A PYTHON CONVERSION IF YOU ALSO INCLUDE detect_types=q.PARSE_DECLTYPES in the database connection  
         self.dbConfig['hqFields']   = [
             'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_move TIMESTAMP',
-            'hq_id INTEGER, move_date TIMESTAMP, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
+            'hq_id INTEGER, move_date TIMESTAMP, moved INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
             ]
         #prefer not to hardcode "hq_data" table above but it's throwing an exception
         #'hq_id INTEGER, move_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
@@ -258,13 +259,21 @@ class Db:
         cursor.close()
         return result
 
-    def x(self, sqlStmt):
+    def x(self, sqlStmt, values=()):
         # x=execute
         cursor = self.con.cursor()
-        cursor.execute(sqlStmt)
+        cursor.execute(sqlStmt, values) if values else cursor.execute(sqlStmt)
         self.con.commit()
         cursor.close()
-        #return result
+
+
+    #def x(self, sqlStmt):
+    #    # x=execute
+    #    cursor = self.con.cursor()
+    #    cursor.execute(sqlStmt)
+    #    self.con.commit()
+    #    cursor.close()
+    #    #return result
 
     def prepDb(self):
         try:
