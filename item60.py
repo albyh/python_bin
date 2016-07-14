@@ -103,7 +103,7 @@ class Hq:
             return False
 
     def __updateXferLabel(self):
-        rows = self.db.q('SELECT last_move as "[timestamp]" FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
+        rows = self.db.q('SELECT last_move FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
         assert rows, "Didn't receive a response to last transfer date"
         if rows[0][0] == None:
             print('None rows == None')
