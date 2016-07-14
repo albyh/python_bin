@@ -179,7 +179,7 @@ class Hq:
         if self.results['lastXfer'] == None:
             self.results['lastXfer'] = cutoff
     
-        #holding the list allows for extendability in recording files transfered
+        #holding the list allows for extensibility in recording files transfered
         moved = []
         skipped = []
         
@@ -209,10 +209,10 @@ class Hq:
         self.__saveXfer(cutoff, moved, skipped)
 
     def __saveXfer(self, cutoff, moved, skipped):
-        sqlStmt = r"UPDATE {} SET last_move = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
+        sqlStmt = r"UPDATE {} SET last_move = '{}' WHERE hq_id = {}".format(self.db.dbConfig['hqTables'][0], cutoff, self.db.hq_id)
         self.db.x(sqlStmt)
         sqlStmt = r"INSERT INTO hq_history VALUES (?,?,?,?,?)"
-        values = (100, cutoff, len(moved), 0, len(skipped))
+        values = (self.db.hq_id, cutoff, len(moved), 0, len(skipped))
         self.db.x(sqlStmt, values)
         
         self.__showResults(len(moved), len(skipped))
@@ -223,7 +223,8 @@ class Hq:
     
 
 class Db:
-    def __init__(self):
+    def __init__(self, hq_id):
+        self.hq_id = hq_id
         self.dbConfig = {}
         self.newTables = False
         self.dbConfig['configFile'] = 'hq.json'
@@ -300,7 +301,7 @@ class Db:
             self.c.execute('CREATE TABLE IF NOT EXISTS {}({})'.format(self.dbConfig['hqTables'][i],self.dbConfig['hqFields'][i]) )
 
     def populateTables(self):
-        hqDataVals = [100, "C:/", "C:/", None]
+        hqDataVals = [self.hq_id, "C:/", "C:/", None]
         print( self.c.rowcount)
         self.c.execute('INSERT INTO {} VALUES (?,?,?,?)'.format(self.dbConfig['hqTables'][0]), (hqDataVals[0],hqDataVals[1],hqDataVals[2],hqDataVals[3],) )
         print('added {}'.format(hqDataVals))
@@ -324,7 +325,7 @@ def centerRoot(root):
 def main():
     root = tk.Tk()
     centerRoot(root)
-    db = Db()
+    db = Db(100)
     win = Hq(root, db)
 
     root.mainloop()
