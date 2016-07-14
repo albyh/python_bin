@@ -26,7 +26,7 @@ class Hq:
         self.options['mustexist'] = False
         self.options['parent'] = win
         self.options['title'] = ''
-        self.results = {'moved'  : [], 'skipped': [], 'lastXfer': None,}
+        self.results = {'moved'  : [], 'skipped': [], 'lastXfer': None }
         self.__initMenu()
         self.__initWin()
         self.__getDbPaths()
@@ -74,12 +74,16 @@ class Hq:
         self.locLabels['dest'] = tk.Label(self.con2, text = os.path.normpath(self.paths['dest'])) 
         self.locLabels['dest'].pack()
         tk.Frame(self.win, height = 30).pack()
-        self.bCopy   = tk.Button(self.win, state='normal' if self.__okToCopy else 'disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
+        self.bCopy   = tk.Button(self.win, state='normal' if self.__okToCopy() else 'disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
         #self.bCopy   = tk.Button(self.win, state='disabled', text='Move Staged Files', pady = 10, command=self.moveFiles)
         self.bCopy.pack() #**self.button_opt)
         tk.Frame(self.win, height = 10).pack()
-        self.xferLabel = tk.Label(self.win, text = 'Last Transfer: {}'.format(self.results['lastXfer']))
+        self.xferLabel = tk.Label(self.win, text = 'Last Transfer Completed: {}'.format(self.results['lastXfer']))
         self.xferLabel.pack()
+        self.xferMove = tk.Label(self.win, text = 'Files Moved Last Transfer: {}'.format(len(self.results['moved'])))
+        self.xferMove.pack()
+        self.xferSkip = tk.Label(self.win, text = 'Files Skipped Last Transfer: {}'.format(len(self.results['skipped'])))
+        self.xferSkip.pack()
         tk.Frame(self.win, height = 50).pack()
     
     def newCopyDate(self):
@@ -93,11 +97,13 @@ class Hq:
             return True
         else:
             if self.paths["src"] == self.paths["dest"]:
-                tkMessageBox.showerror( "Error", "Source and destination can't be the same folder.\nChange source or destination folder." )
+                #self.paths["src"] will be '' if new tables
+                if self.paths["src"] != '':
+                    tkMessageBox.showerror( "Error", "Source and destination can't be the same folder.\nChange source or destination folder." )
             return False
 
     def __updateXferLabel(self):
-        rows = self.db.q('SELECT last_copy FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
+        rows = self.db.q('SELECT last_move as "[timestamp]" FROM {} WHERE hq_id = 100'.format(self.db.dbConfig['hqTables'][0]))
         assert rows, "Didn't receive a response to last transfer date"
         if rows[0][0] == None:
             print('None rows == None')
@@ -106,8 +112,8 @@ class Hq:
         else:
             print('prior xfer noted')
             self.results['lastXfer'] = rows[0][0]
-
-        self.xferLabel.config(text = 'Last Transfer: {}'.format(self.results['lastXfer']))
+######################
+        #self.xferLabel.config(text = 'Last Transfer: {}'.format(self.results['lastXfer'].strftime('%h:%m')))
 
     def setFolder(self,loc):
         #called when the user clicks button to set the source or destination folder
@@ -120,10 +126,13 @@ class Hq:
             sqlStmt = r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], loc, self.paths[loc])
             self.db.x(sqlStmt)
 
-        if self.__okToCopy():
-            self.bCopy['state'] = 'normal'
-        else:
-            self.bCopy['state'] = 'disabled'
+        #if self.__okToCopy():
+        #    self.bCopy['state'] = 'normal'
+        #else:
+        #    self.bCopy['state'] = 'disabled'
+
+        self.bCopy['state'] = 'normal' if self.__okToCopy() else 'disabled'
+
 
     def __getDbPaths(self):
         for loc in self.locLabels:
@@ -136,6 +145,10 @@ class Hq:
             except:
                 print('Error retrieving saved folder. Setting to root.')
                 self.paths[loc] = os.path.normpath('C:/')
+        
+#####################################
+        self.bCopy['state'] = 'normal' if self.__okToCopy() else 'disabled'
+
 
     def __updateLabels(self,loc):
         #Updates the label passed as 'loc' with the currently selected path 
@@ -146,27 +159,47 @@ class Hq:
         #display the results of the file copy
         tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format( len(self.results["moved"]), len(self.results["skipped"]) ) )
 
-    def moveFiles(self):
-        #inner function instead of private function
-        def edited(f,cutoff):
-	        #was the file edited in the prior 24 hours
-            return True if ((cutoff - os.path.getmtime(f))/3600 <= 24) else False
+    def __edited(self, f):
+	    #was the file edited since the last_move date stored to db
+        #return True if ((cutoff - os.path.getmtime(f))/3600 <= 24) else False
+        #return true if file's current datetime is > than the cutoff
+        
+        x = datetime.datetime.fromtimestamp( os.path.getmtime(f) )
+        z = self.results['lastXfer']
 
+        print( datetime.datetime.fromtimestamp( os.path.getmtime(f) ) ) 
+        print( self.results['lastXfer'] ) 
+        #print( datetime.datetime.strptime(self.results['lastXfer'], '%Y-%m-%d %H:%M:%S.0000') )
+        
+        return True if ( datetime.datetime.fromtimestamp( os.path.getmtime(f) ) > self.results['lastXfer'] ) else False
+
+    def moveFiles(self):
         #copy ALL .txt files MODIFIED/CREATED in the past 24 hours from Folder "src" to Folder "dest"
         file_filter = "*.txt"
-        cutoff = time.time()
-
+        #cutoff = time.time()
+        cutoff = datetime.datetime.now()
+        #if no prior transfer, set datetime to now
+        if self.results['lastXfer'] == None:
+            self.results['lastXfer'] = cutoff
+    
+        #holding the list allows for extendability in recording files transfered
+        moved = []
+        skipped = []
+        
         try:
             for file_ in glob.glob(self.paths["src"]+"/"+file_filter):
 
-                if edited(file_,cutoff):
-                    editTime = datetime.datetime.fromtimestamp( int(os.path.getmtime(file_)) ).strftime("%H:%M:%S")
+                if self.__edited(file_):
+                    editTime = datetime.datetime.fromtimestamp( int(os.path.getmtime(file_)) ).strftime("%b %d-%y %H:%M:%S")
+                    #editTime = datetime.datetime.fromtimestamp(os.path.getmtime(file_))
+                    #print("edit time") ; print(editTime)
+
                     shutil.move( file_, self.paths["dest"] )
                     print( '{} modified at {}.\n-->Moving to batch folder "{}"'.format(file_, editTime, self.paths["dest"]) )
-                    self.results['moved'].append( file_ )
+                    moved.append( file_ )
                 else:
                     print( "{} not new/modified...skipping".format(file_) )
-                    self.results['skipped'].append( file_ )
+                    skipped.append( file_ )
 
         except IOError as err:
             print("I/O Error ({}) moving {}.".format(err,file_))
@@ -174,21 +207,31 @@ class Hq:
 
         except Exception as err:
             print("{} moving {}".format(err,file_))
-            pass
+            raise
 
 
-        self.__saveXfer(cutoff)
 
-    def __saveXfer(self,cutoff):
-        sqlStmt = r"UPDATE {} SET last_copy = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
+        #PASS IN THE VALUES TUPLE 
+        self.__saveXfer(cutoff, moved, skipped)
+        
+
+    def __saveXfer(self, cutoff, moved, skipped):
+        sqlStmt = r"UPDATE {} SET last_move = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
         self.db.x(sqlStmt)
 
-        sqlStmt = r"UPDATE {} SET last_copy = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], cutoff)
+        print('update value list for hq_history')
+        #sqlStmt = r"'INSERT INTO {} VALUES (?,?,?,?,?)'".format(self.db.dbConfig['hqTables'][1]), (100, cutoff, len(self.results['moved']), 0, len(self.results['skipped']))
+        
+        #sqlStmt = r"'INSERT INTO {} VALUES (?,?,?,?,?)'".format(self.db.dbConfig['hqTables'][1])
+        #sqlStmt += r",(100, {}, {}, 0, {} )".format( cutoff,len(self.results['moved']),len(self.results['skipped']))
+
+        print( "FIX INSERT INTO TABLE 2")                
+        sqlStmt = r"INSERT INTO hq_history VALUES (100, 0, 0, 0, 0)"
         self.db.x(sqlStmt)
         
         self.__showResults()
-        self.results["moved"] = []
-        self.results["skipped"] = []
+        self.results["moved"] = moved
+        self.results["skipped"] = skipped
 
 class Db:
     def __init__(self):
@@ -198,12 +241,13 @@ class Db:
         self.dbConfig['dbName']     = 'hq.db'
         self.dbConfig['dbPath']     = ''
         self.dbConfig['hqTables']   = ['hq_data', 'hq_history']
+        #YOU CAN SET A FIELD TO TYPE=TIMESTAMP AS IT'S A PYTHON CONVERSION
         self.dbConfig['hqFields']   = [
-            'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_copy DATE',
-            'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
+            'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_move TIMESTAMP',
+            'hq_id INTEGER, move_date TIMESTAMP, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
             ]
         #prefer not to hardcode "hq_data" table above but it's throwing an exception
-        #'hq_id INTEGER, copy_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
+        #'hq_id INTEGER, move_date DATE, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
 
         self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
 
@@ -249,7 +293,7 @@ class Db:
             #if exception.errno != errno.EEXIST:
             #    raise
             #self.hqdb = self.dbConfig['dbPath']+self.dbConfig['dbName']
-            with q.connect(self.hqdb) as self.con:
+            with q.connect(self.hqdb, detect_types=q.PARSE_DECLTYPES) as self.con:
                 self.con.text_factory = str
                 self.c  = self.con.cursor()
                 self.verifyTables()
@@ -269,7 +313,7 @@ class Db:
     def populateTables(self):
         hqDataVals = [100, "C:/", "C:/", None]
         print( self.c.rowcount)
-        self.c.execute('INSERT INTO {} VALUES (?,?,?,?)'.format(self.dbConfig['hqTables'][0]), (hqDataVals[0],hqDataVals[1],hqDataVals[2],hqDataVals[3],))
+        self.c.execute('INSERT INTO {} VALUES (?,?,?,?)'.format(self.dbConfig['hqTables'][0]), (hqDataVals[0],hqDataVals[1],hqDataVals[2],hqDataVals[3],) )
         print('added {}'.format(hqDataVals))
         print( self.c.rowcount)
         self.con.commit()
