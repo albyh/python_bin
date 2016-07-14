@@ -126,11 +126,6 @@ class Hq:
             sqlStmt = r"UPDATE {} SET {}_dir = '{}' WHERE hq_id = 100".format(self.db.dbConfig['hqTables'][0], loc, self.paths[loc])
             self.db.x(sqlStmt)
 
-        #if self.__okToCopy():
-        #    self.bCopy['state'] = 'normal'
-        #else:
-        #    self.bCopy['state'] = 'disabled'
-
         self.bCopy['state'] = 'normal' if self.__okToCopy() else 'disabled'
 
 
@@ -146,8 +141,9 @@ class Hq:
                 print('Error retrieving saved folder. Setting to root.')
                 self.paths[loc] = os.path.normpath('C:/')
         
-#####################################
-        self.bCopy['state'] = 'normal' if self.__okToCopy() else 'disabled'
+        if not self.db.newTables:
+            self.bCopy['state'] = 'normal' if self.__okToCopy() else 'disabled'
+            self.db.newTables = False
 
 
     def __updateLabels(self,loc):
@@ -155,26 +151,26 @@ class Hq:
         self.locLabels[loc].config(text = (self.paths[loc]))    
         self.locLabels[loc].config(text = os.path.normpath(self.paths[loc]) )
 
-    def __showResults(self):
+    def __showResults(self,m,c):
         #display the results of the file copy
-        tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format( len(self.results["moved"]), len(self.results["skipped"]) ) )
+        tkMessageBox.showinfo( "Summary", "{} files moved and {} files skipped.\nSee console for details.".format(m, c) )
 
     def __edited(self, f):
 	    #was the file edited since the last_move date stored to db
         #return True if ((cutoff - os.path.getmtime(f))/3600 <= 24) else False
         #return true if file's current datetime is > than the cutoff
         
-        x = datetime.datetime.fromtimestamp( os.path.getmtime(f) )
-        z = self.results['lastXfer']
+        #x = datetime.datetime.fromtimestamp( os.path.getmtime(f) )
+        #z = self.results['lastXfer']
 
-        print( datetime.datetime.fromtimestamp( os.path.getmtime(f) ) ) 
-        print( self.results['lastXfer'] ) 
+        #print( datetime.datetime.fromtimestamp( os.path.getmtime(f) ) ) 
+        #print( self.results['lastXfer'] ) 
         #print( datetime.datetime.strptime(self.results['lastXfer'], '%Y-%m-%d %H:%M:%S.0000') )
         
         return True if ( datetime.datetime.fromtimestamp( os.path.getmtime(f) ) > self.results['lastXfer'] ) else False
 
     def moveFiles(self):
-        #copy ALL .txt files MODIFIED/CREATED in the past 24 hours from Folder "src" to Folder "dest"
+        #copy ALL .txt files MODIFIED/CREATED since last move from Folder "src" to Folder "dest"
         file_filter = "*.txt"
         #cutoff = time.time()
         cutoff = datetime.datetime.now()
@@ -203,7 +199,7 @@ class Hq:
 
         except IOError as err:
             print("I/O Error ({}) moving {}.".format(err,file_))
-            pass
+            raise
 
         except Exception as err:
             print("{} moving {}".format(err,file_))
@@ -229,19 +225,20 @@ class Hq:
         sqlStmt = r"INSERT INTO hq_history VALUES (100, 0, 0, 0, 0)"
         self.db.x(sqlStmt)
         
-        self.__showResults()
+        self.__showResults(len(moved), len(skipped))
         self.results["moved"] = moved
         self.results["skipped"] = skipped
 
 class Db:
     def __init__(self):
         self.dbConfig = {}
+        self.newTables = False
         self.dbConfig['configFile'] = 'hq.json'
         #name and path are default values that will be used if hq.json is not found or is corrupt
         self.dbConfig['dbName']     = 'hq.db'
         self.dbConfig['dbPath']     = ''
         self.dbConfig['hqTables']   = ['hq_data', 'hq_history']
-        #YOU CAN SET A FIELD TO TYPE=TIMESTAMP AS IT'S A PYTHON CONVERSION
+        #YOU CAN SET A FIELD TO TYPE=TIMESTAMP AS IT'S A PYTHON CONVERSION IF YOU ALSO INCLUDE detect_types=q.PARSE_DECLTYPES in the database connection  
         self.dbConfig['hqFields']   = [
             'hq_id INTEGER PRIMARY KEY, src_dir TEXT NOT NULL, dest_dir TEXT NOT NULL, last_move TIMESTAMP',
             'hq_id INTEGER, move_date TIMESTAMP, copied INTEGER, failed INTEGER, skipped INTEGER, FOREIGN KEY(hq_id) REFERENCES {}(hq_id)'.format(self.dbConfig['hqTables'][0]),
@@ -305,6 +302,8 @@ class Db:
                 if x[0] == 0:
                     print( 'no records...populating table')
                     self.populateTables()
+                    #assume tables are new
+                    self.newTables = True
 
     def verifyTables(self):
         for i in range(len(self.dbConfig['hqTables'])):
